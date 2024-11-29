@@ -21,23 +21,32 @@ const COLOR_CLOSE_HEX = "#E62517";
 const COLOR_DISCLAIMER = "rgba(31, 69, 236, 1)";
 const COLOR_DISCLAIMER_HEX = "#1F45EC";
 
+const DEBUG = process.argv.map(a => a.toLowerCase()).includes('--debug');
+
+const currentFolder = process.cwd();
+const passedFileName = process.argv[2]
+const inputZipFile = path.isAbsolute(passedFileName) ? passedFileName : path.join(currentFolder, passedFileName);
+
 var errorsTracker = new ErrorsTracker();
 
-main('exports').catch((err) => console.error("Error:", err));
+main(inputZipFile).catch((err) => console.error("Error:", err));
 
-async function main (exportsFolder) {
-    const currentFolder = process.cwd();
+async function main (zipWithExports) {
+    if (!fs.existsSync(zipWithExports)) {
+        console.log(`\nFile not found: ${zipWithExports}`)
+        return
+    }
+    const workDir = path.join(currentFolder, '.processing');
+    await fs.promises.rm(workDir, { recursive: true, force: true });
+    await mkdir(workDir, { recursive: true });
+    await unzipToFolder(zipWithExports, workDir);
 
-    const exportsZip = path.join(currentFolder, process.argv[2]);
+    const results = await processFolder(workDir)
 
-    const extractPath = path.join(currentFolder, '.processing');
-    await mkdir(extractPath, { recursive: true });
-    await unzipToFolder(exportsZip, extractPath);
-
-    const inputFolder = path.join(currentFolder, exportsFolder);
-    const outputFolder = path.join(currentFolder, "processed");
-
-    const results = await processFolder(inputFolder, outputFolder)
+    const processedZip = `${removeExtension(zipWithExports)}.processed.zip`
+    if (!DEBUG) {
+        await zipFolder(workDir, processedZip);
+    }
 
     const allZipFiles = results.filter(result => !!result).length
     const failed = results.filter(result => !result).length
@@ -45,51 +54,45 @@ async function main (exportsFolder) {
 
     errorsTracker.report()
 
-    console.log(`\nCheck successfully processed files in "${outputFolder}"`)
+    const outputPath = DEBUG ? workDir : processedZip
+    console.log(`\nOutput file:\n${outputPath}`)
 }
 
-async function processFolder (inputFolder, outputFolder) {
-    await fs.promises.rm(outputFolder, { recursive: true, force: true });
-    await mkdir(outputFolder, { recursive: true });
-
+async function processFolder (inputFolder) {
     const results = []
 
     const files = await readdir(inputFolder);
     for (const file of files) {
         if (path.extname(file) === ".zip") {
-            results.push(...await processZipFile(path.join(inputFolder, file), outputFolder));
+            results.push(...await processZipFile(path.join(inputFolder, file)));
+            // break
         }
     }
 
     return results
 };
 
-const processZipFile = async (filePath, outputFolder) => {
-    const fileName = path.basename(filePath, ".zip");
-    const extractPath = path.join(outputFolder, fileName);
+const processZipFile = async (zipFile) => {
+    const workDir = await quickUnzip(zipFile)
 
-    await unzipToFolder(filePath, extractPath);
-
-    const result = []
+    const result = [true]
 
     let indexHtmlFound
 
-    result.push(true)
-
-    const files = await readdir(extractPath);
+    const files = await readdir(workDir);
 
     for (const file of files) {
-        const fullPath = path.join(extractPath, file);
-        const stats = await stat(fullPath);
+        const filePath = path.join(workDir, file);
+        const stats = await stat(filePath);
         if (stats.isFile() && file === "index.html") {
             indexHtmlFound = true
-            const newHtml = processHtml(await fs.promises.readFile(fullPath, "utf8"));
+            const newHtml = processHtml(await fs.promises.readFile(filePath, "utf8"));
             if (!newHtml) {
-                await fs.promises.rm(extractPath, { recursive: true, force: true });
+                await fs.promises.rm(workDir, { recursive: true, force: true });
                 result.push(false)
                 return result
             }
-            await writeFile(fullPath, newHtml, "utf8");
+            await writeFile(filePath, newHtml, "utf8");
         }
     }
 
@@ -97,9 +100,9 @@ const processZipFile = async (filePath, outputFolder) => {
         errorsTracker.add('No index.html file found inside zip')
     }
 
-    const zipFileWithPath = path.join(outputFolder, `${fileName}.zip`);
-    await zipFolder(extractPath, zipFileWithPath);
-
+    if (!DEBUG) {
+        await zipFolder(workDir, zipFile);
+    }
     return result
 };
 
@@ -120,6 +123,18 @@ async function unzipToFolder (filePath, outputFolder) {
         .createReadStream(filePath)
         .pipe(unzipper.Extract({ path: outputFolder }))
         .promise();
+}
+
+async function quickUnzip(zipFile) {
+    const extractFolder = path.join(path.dirname(zipFile), path.basename(zipFile, '.zip'))
+    await unzipToFolder(zipFile, extractFolder)
+    return extractFolder
+}
+
+function removeExtension(filePath) {
+    const dir = path.dirname(filePath)
+    const fileNameWithoutExtension = path.basename(filePath, path.extname(filePath))
+    return path.join(dir, fileNameWithoutExtension)
 }
 
 function processHtml(html) {

@@ -5,4 +5,4 @@ exports
 processed/
 version 1/
 
-exports.zip
+*.zip
