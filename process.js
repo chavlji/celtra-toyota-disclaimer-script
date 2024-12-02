@@ -147,6 +147,8 @@ function processHtml(html) {
 
     html.value = html.value.replace(/<div[^<]*id="click-overlay"[^>]*?><\/div>/g, "");
 
+    html.value = html.value.replace(/<div[^<]*class="screen"[^>]*?>/g, (match) => `${match}<div id="click-overlay" onclick="openClickTag"></div>`);
+
     const buttonOpen = addComponentAttributes(html, [COLOR_OPEN, COLOR_OPEN_HEX], 'id="toyota-open" onclick="openDisclaimer()"')
 
     const buttonClose = addComponentAttributes(html, [COLOR_CLOSE, COLOR_CLOSE_HEX], 'id="toyota-close" onclick="closeDisclaimer()"')
@@ -201,7 +203,7 @@ function addComponentAttributes (html, strokeColors, attributes) {
 
         function findDiv(divs, subString) {
             return divs
-                .filter((div) => div.match(/^[^>]*class="component/))
+                .filter((div) => div.match(/^[^>]*class="pointer-events-all/))
                 .filter((div) => div.includes(subString))
                 .sort((a, b) => a.length - b.length)[0];
         }

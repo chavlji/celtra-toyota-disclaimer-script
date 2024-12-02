@@ -1,13 +1,16 @@
 const HIGHEST_Z_INDEX = 2147483647;
+const HIGHEST_Z_INDEX_MINUS_1 = 2147483647 - 1;
+const HIGHEST_Z_INDEX_MINUS_2 = 2147483647 - 2;
 
 const style = /*css*/ `
         #toyota-open,
         #toyota-close {
             cursor: pointer;
+            z-index: ${HIGHEST_Z_INDEX_MINUS_1} !important;
         }
 
         #toyota-disclaimer {
-            z-index: ${HIGHEST_Z_INDEX};
+            z-index: ${HIGHEST_Z_INDEX} !important;
             transition: visibility 0.3s, opacity 0.3s;
             opacity: 0 !important;
             visibility: hidden;
@@ -29,6 +32,17 @@ const style = /*css*/ `
 
         #toyota-disclaimer:not(.hovered) {
             pointer-events: all !important;
+        }
+
+        #toyota-disclaimer.hovered {
+            z-index: ${HIGHEST_Z_INDEX_MINUS_2} !important;
+        }
+
+        #click-overlay {
+            position: relative;
+            z-index: ${HIGHEST_Z_INDEX_MINUS_2} !important;
+            width: 100vw;
+            height: 100vh;
         }
     `
     .replace(/\n/g, "")
@@ -59,6 +73,10 @@ const script = /*js*/ `
         }
         function deferredCloseDisclaimer (e) {
             timer = setTimeout(closeDisclaimer, 500);
+        }
+        function openClickTag () {
+            console.log('x', window.clickTag);
+            window.open(window.clickTag);
         }
     `
     .replace(/\n/g, "")

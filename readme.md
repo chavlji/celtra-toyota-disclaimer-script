@@ -8,6 +8,7 @@
 # DEBUG
 To prevent zipping temporary folders for debug purposes run:
 `node process.js [path_to_zip_with_exports] --debug`
+You can then easily check each html from folder `.processed` after you run the script.
 
 # EXAMPLE
 `node process.js /Users/Person/Desktop/testing-exports.zip`
