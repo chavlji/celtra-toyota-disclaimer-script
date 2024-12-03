@@ -55,7 +55,7 @@ async function main (zipWithExports) {
     errorsTracker.report()
 
     const outputPath = DEBUG ? workDir : processedZip
-    console.log(`\nOutput file:\n${outputPath}`)
+    console.log(`\nOutput file:\n"${outputPath}"`)
 }
 
 async function processFolder (inputFolder) {
@@ -64,7 +64,13 @@ async function processFolder (inputFolder) {
     const files = await readdir(inputFolder);
     for (const file of files) {
         if (path.extname(file) === ".zip") {
+            const errorsCount = errorsTracker.errors.length
             results.push(...await processZipFile(path.join(inputFolder, file)));
+            if (errorsTracker.errors.length > errorsCount) {
+                console.log(`${file}: ❌ ${errorsTracker.errors[errorsTracker.errors.length - 1]}`)
+            } else {
+                console.log(`${file}: ✅ Done`)
+            }
             // break
         }
     }
