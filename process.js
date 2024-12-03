@@ -168,7 +168,7 @@ function processHtml(html) {
 
     const disclaimer = addComponentAttributes(html, [COLOR_DISCLAIMER, COLOR_DISCLAIMER_HEX], 'id="toyota-disclaimer"')
 
-    if (disclaimer && !(buttonOpen || !hoverButton)) {
+    if (disclaimer && !buttonOpen && !hoverButton) {
         errorsTracker.add('Disclaimer exists, but no trigger button found')
         return
     }
